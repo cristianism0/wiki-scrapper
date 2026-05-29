@@ -2,57 +2,41 @@ from bs4.element import Tag
 from pathlib import Path
 import csv
 
-def months_extract(soup)-> list:
-    '''Parser the HTML and extract the DIVS that contain the curiosities'''
-    
-    divs = soup.select("div.mw-heading.mw-heading3")
-        
-    months = []
-    for div in divs:
-        h3 = div.find("h3")
-        if h3:
-            months.append(h3.text.strip())
-            
-    return months
-
-def curiosity_extract(soup)-> dict:
-    """Parser throught the DIVS and collect the curiosities"""    
-    id_months = months_extract(soup)
-    
+def curiosity_extract(soup) -> dict:
+    """Parser through the DIVS and collect the curiosities"""
     all_curiosities = {}
-    
-    for id in id_months:
-        
-        # Find the curiosities for each month (div) 
-        div = soup.find('h3', id = id).parent       
-        
-        pre_curiosity = div.next_siblings    
-        
+
+    for div in soup.select("div.mw-heading.mw-heading3"):
+        h3 = div.find("h3")
+        if not h3:
+            continue
+
+        h3_id = h3.get("id")
+        h3_text = h3.text.strip()
+
+        if not h3_id:
+            continue
+
+        pre_curiosity = div.next_siblings
         curiosity = []
-
-        for childrens in pre_curiosity:
-            # The curiosities in at the ul tag, so we need to iterate over 
-            if isinstance(childrens, Tag) and childrens.name == 'ul':
-
-                for li in childrens.find_all('li'):               
-                    data = li.get_text(strip=False)             
-                    curiosity.append(data)
-                    
+        for children in pre_curiosity:
+            if isinstance(children, Tag) and children.name == 'ul':
+                for li in children.find_all('li'):
+                    curiosity.append(li.get_text(strip=False))
                 break
-                    
-        all_curiosities.update({id : curiosity})  
+
+        all_curiosities[h3_text] = curiosity
 
     return all_curiosities
 
-def scrap_input(curiosity: dict, data_path: Path, csv_name: str):
+def scrap_input(curiosity: dict, data_path:str | Path, csv_name: str) -> None:
     """Create the .csv file with the content"""
     # Create the dir for scrappers.
-
+    data_path = Path(data_path)
     Path(data_path).mkdir(exist_ok=True)
 
     # Treat the name
-    csv_name.strip()
-    csv_name = csv_name + '.csv'
+    csv_name = csv_name.strip() + '.csv'
 
     with open(data_path / Path(csv_name), 'w', newline='', encoding='utf8') as scrap:
         field_names = ['Month', 'Curiosities']
@@ -61,7 +45,3 @@ def scrap_input(curiosity: dict, data_path: Path, csv_name: str):
         for months in curiosity:
             for item in curiosity[months]:
                 writer.writerow({'Month': months, 'Curiosities': item})
-    
-
-
-
